@@ -68,3 +68,22 @@ GNU General Public License for more details.
 
 You should have received [a copy of the GNU General Public License](COPYING)
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+
+### Running with Docker
+
+- Create directories on host machine (e.g. Raspberry Pi)
+mkdir -p {data/adsb,logs/adsb}
+
+- Start container with docker-compose
+docker-compose up -d
+
+- Check status
+docker-compose logs -f
+docker-compose ps
+
+
+### TODO's
+- check directory of mounted USB device (RTL-SDR Dongle)
+- check MLAT_Server und MLAT_Username

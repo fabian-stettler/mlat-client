@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  adsb-processor:
+    build: .
+    container_name: adsb-mlat-client
+    restart: unless-stopped
+    devices:
+      - "/dev/bus/usb:/dev/bus/usb"
+    ports:
+      - "8080:8080"    # Web Interface für dump1090
+      - "30005:30005"  # RAW Daten Stream
+      - "30004:30004"  # BEAST Ergebnisse (optional)
+      - "30003:30003"  # SBS Ergebnisse (optional)
+    environment:
+      - MLAT_SERVER=mlat1.adsbexchange.com:40900
+      - MLAT_USER=dein-username
+      - LATITUDE=52.5200
+      - LONGITUDE=13.4050
+      - ALTITUDE=35
+    volumes:
+      - ./adsb-data:/data
+      - ./logs:/var/log/adsb
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "netstat", "-an", "|", "grep", "30005"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
