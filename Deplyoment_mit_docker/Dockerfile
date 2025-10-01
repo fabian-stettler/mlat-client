@@ -1,7 +1,7 @@
 FROM python:3.9-slim-bullseye
 
 # Metadaten
-LABEL maintainer="your-name@email.com"
+LABEL maintainer="fabian.stettler@hispeed.ch"
 LABEL description="mlat-client with dump1090 for Raspberry Pi"
 
 # Installiere Abhängigkeiten
