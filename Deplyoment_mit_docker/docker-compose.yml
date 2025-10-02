@@ -5,13 +5,14 @@ services:
     build: .
     container_name: adsb-mlat-client
     restart: unless-stopped
+    network_mode: host  # Verwendet Host-Netzwerk für Debugging
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
-    ports:
-      - "8080:8080"    # Web Interface für dump1090
-      - "30005:30005"  # RAW Daten Stream
-      - "30004:30004"  # BEAST Ergebnisse (optional)
-      - "30003:30003"  # SBS Ergebnisse (optional)
+    # ports: # Nicht nötig bei host network mode
+    #   - "8080:8080"    # Web Interface für dump1090
+    #   - "30005:30005"  # RAW Daten Stream
+    #   - "30004:30004"  # BEAST Ergebnisse (optional)
+    #   - "30003:30003"  # SBS Ergebnisse (optional)
     environment:
       - MLAT_SERVER=mlat1.adsbexchange.com:40900
       - MLAT_USER=dein-username
