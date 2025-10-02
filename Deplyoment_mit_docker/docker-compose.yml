@@ -8,11 +8,11 @@ services:
     network_mode: host  # Verwendet Host-Netzwerk für Debugging
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
-    # ports: # Nicht nötig bei host network mode
-    #   - "8080:8080"    # Web Interface für dump1090
-    #   - "30005:30005"  # RAW Daten Stream
-    #   - "30004:30004"  # BEAST Ergebnisse (optional)
-    #   - "30003:30003"  # SBS Ergebnisse (optional)
+    ports:
+      - "0.0.0.0:8080:8080"    # Bindet an alle IP-Adressen
+      - "0.0.0.0:30005:30005"
+      - "0.0.0.0:30004:30004"
+      - "0.0.0.0:30003:30003"
     environment:
       - MLAT_SERVER=mlat1.adsbexchange.com:40900
       - MLAT_USER=dein-username
