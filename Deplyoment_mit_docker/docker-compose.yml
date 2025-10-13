@@ -1,26 +1,23 @@
-version: '3.8'
-
 services:
   adsb-processor:
     build: .
     container_name: adsb-mlat-client
     restart: unless-stopped
-    network_mode: host  # Verwendet Host-Netzwerk für Debugging
+    network_mode: host
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
-    ports:
-      - "0.0.0.0:8080:8080"    # Bindet an alle IP-Adressen
-      - "0.0.0.0:30005:30005"
-      - "0.0.0.0:30004:30004"
-      - "0.0.0.0:30003:30003"
     environment:
-      - MLAT_SERVER=mlat1.adsbexchange.com:40900
-      - MLAT_USER=dein-username
+      - MLAT_SERVER=localhost:40147
+      - MLAT_USER=test-user-Paderborn_:)
       - LATITUDE=52.5200
       - LONGITUDE=13.4050
       - ALTITUDE=35
+      - SIMULATE_DATA=false
+      - READSB_DEVICE=0
     volumes:
+      - /dev/bus/usb:/dev/bus/usb
       - ./adsb-data:/data
+      - ./logs:/app/logs
       - ./logs:/var/log/adsb
     logging:
       driver: "json-file"
@@ -28,7 +25,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "netstat", "-an", "|", "grep", "30005"]
+      test: ["CMD", "sh", "-c", "pgrep -f mlat-client && pgrep -f readsb"]
       interval: 30s
       timeout: 10s
       retries: 3

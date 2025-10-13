@@ -87,3 +87,16 @@ docker-compose ps
 ### TODO's
 - check directory of mounted USB device (RTL-SDR Dongle)
 - check MLAT_Server und MLAT_Username
+
+
+### Start Client locally
+
+mlat-client: 
+
+(mlat_client) fabian@fabian-Yoga-7-16IAP7:~/Documents/InformatikVault/Semester5/WIPRO/SoftwareClient/mlat-client$ mlat-client \
+  --input-connect localhost:30105 \
+  --results beast,listen,40147 \
+  --lat 64.321 \
+  --lon 18.023 \
+  --alt 500 \
+  --user fabian

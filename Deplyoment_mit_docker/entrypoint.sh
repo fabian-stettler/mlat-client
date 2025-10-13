@@ -1,66 +1,111 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-# Environment Variables mit Defaults
-MLAT_SERVER="${MLAT_SERVER:-mlat1.adsbexchange.com:40900}"
-MLAT_USER="${MLAT_USER:-your-username}"
+# Minimal entrypoint: start readsb and mlat-client to localhost.
+
+# Config via env
+MLAT_SERVER="${MLAT_SERVER:-localhost:40147}"
+MLAT_USER="${MLAT_USER:-mlat-docker}"
 LATITUDE="${LATITUDE:-0.0}"
 LONGITUDE="${LONGITUDE:-0.0}"
 ALTITUDE="${ALTITUDE:-0}"
 
-echo "Starting ADS-B Processing Container"
-echo "Server: $MLAT_SERVER"
-echo "Position: LAT=$LATITUDE, LON=$LONGITUDE, ALT=$ALTITUDE"
+# readsb options (Option A: run readsb in container on RTL-SDR)
+READSB_DEVICE_TYPE="${READSB_DEVICE_TYPE:-rtlsdr}"
+# Device selection: prefer READSB_DEVICE, else READSB_DEVICE_INDEX, else RTL_DEVICE_INDEX; empty means let readsb pick default
+READSB_DEVICE="${READSB_DEVICE:-}"
+if [[ -z "${READSB_DEVICE}" && -n "${READSB_DEVICE_INDEX:-}" ]]; then
+  READSB_DEVICE="${READSB_DEVICE_INDEX}"
+fi
+if [[ -z "${READSB_DEVICE}" && -n "${RTL_DEVICE_INDEX:-}" ]]; then
+  READSB_DEVICE="${RTL_DEVICE_INDEX}"
+fi
+READSB_GAIN="${READSB_GAIN:-49.6}"
+READSB_FREQ="${READSB_FREQ:-1090000000}"
+READSB_BO_PORT="${READSB_BO_PORT:-30105}"
 
-# Prüfe ob USB Device verfügbar
-if [ ! -e "/dev/bus/usb" ]; then
-    echo "WARNING: USB device not found at /dev/bus/usb"
+echo "Starting readsb and mlat-client (Option A: readsb inside container)"
+echo "MLAT server: $MLAT_SERVER | User: $MLAT_USER"
+if [[ -n "$READSB_DEVICE" ]]; then
+  echo "SDR: type=$READSB_DEVICE_TYPE device=$READSB_DEVICE"
+else
+  echo "SDR: type=$READSB_DEVICE_TYPE device=<default>"
+fi
+echo "Position: lat=$LATITUDE lon=$LONGITUDE alt=$ALTITUDE"
+
+# Require RTL-SDR present in container
+if ! lsusb 2>/dev/null | grep -qiE "(Realtek.*RTL|0bda:2838|RTL2832)"; then
+  echo "ERROR: No RTL-SDR USB device detected inside container."
+  echo "Hints:"
+  echo " - Ensure the stick is connected and not in use on the host (stop other SDR apps)."
+  echo " - Compose should have: devices: - /dev/bus/usb:/dev/bus/usb and privileged: true."
+  echo " - Run 'lsusb' on host to verify the device is present."
+  exit 1
 fi
 
-# Starte dump1090
-echo "Starting dump1090..."
-gosu mlatuser dump1090 \
-    --interactive \
-    --net \
-    --net-http-port 8080 \
-    --net-ro-port 30005 \
-    --quiet &
-DUMP1090_PID=$!
+# Start readsb on RTL-SDR
+# Build optional --device flag if provided (supports index or serial)
+READSB_DEVICE_FLAG=()
+if [[ -n "$READSB_DEVICE" ]]; then
+  READSB_DEVICE_FLAG=(--device "$READSB_DEVICE")
+fi
 
-# Warte bis dump1090 läuft
-sleep 10
+readsb \
+  --device-type "$READSB_DEVICE_TYPE" \
+  ${READSB_DEVICE_FLAG[@]:-} \
+  --net \
+  --gain "$READSB_GAIN" \
+  --freq "$READSB_FREQ" \
+  --lat "$LATITUDE" \
+  --lon "$LONGITUDE" \
+  --net-bo-port "$READSB_BO_PORT" \
+  --modeac \
+  > /tmp/readsb.log 2>&1 &
+READSB_PID=$!
 
-# Starte mlat-client
-echo "Starting mlat-client..."
-gosu mlatuser mlat-client \
-    --input-type dump1090 \
-    --input-connect localhost:30005 \
-    --server "$MLAT_SERVER" \
-    --user "$MLAT_USER" \
-    --lat "$LATITUDE" \
-    --lon "$LONGITUDE" \
-    --alt "$ALTITUDE" \
-    --results beast,connect,localhost:30004 \
-    "$@" &
+# Wait for Beast-output port to be ready
+echo "Waiting for readsb Beast output on port $READSB_BO_PORT ..."
+for i in {1..30}; do
+  if python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('127.0.0.1', int('$READSB_BO_PORT'))); s.close()" 2>/dev/null; then
+    echo "Port $READSB_BO_PORT is ready (after $i checks)"
+    # Sanity: give readsb a moment and ensure it stays alive
+    sleep 1
+    if ! kill -0 "$READSB_PID" 2>/dev/null; then
+      echo "ERROR: readsb died right after opening the port. Last log:"
+      sed -n '1,200p' /tmp/readsb.log || true
+      exit 1
+    fi
+    break
+  fi
+  sleep 1
+  if ! kill -0 "$READSB_PID" 2>/dev/null; then
+  echo "ERROR: readsb exited unexpectedly. Last log:"
+    sed -n '1,200p' /tmp/readsb.log || true
+    exit 1
+  fi
+done
+
+# Start mlat-client pointed at local Beast output
+mlat-client \
+  --input-type beast \
+  --input-connect 127.0.0.1:"$READSB_BO_PORT" \
+  --server "$MLAT_SERVER" \
+  --lat "$LATITUDE" \
+  --lon "$LONGITUDE" \
+  --alt "$ALTITUDE" \
+  --user "$MLAT_USER" \
+  "$@" &
 MLAT_PID=$!
 
-# Health Check Funktion
-health_check() {
-    while true; do
-        if ! kill -0 $DUMP1090_PID 2>/dev/null; then
-            echo "dump1090 process died, exiting..."
-            exit 1
-        fi
-        if ! kill -0 $MLAT_PID 2>/dev/null; then
-            echo "mlat-client process died, exiting..."
-            exit 1
-        fi
-        sleep 30
-    done
+# Graceful shutdown
+term_handler() {
+  echo "Stopping..."
+  kill "$MLAT_PID" 2>/dev/null || true
+  kill "$READSB_PID" 2>/dev/null || true
+  wait "$MLAT_PID" 2>/dev/null || true
+  wait "$READSB_PID" 2>/dev/null || true
 }
+trap term_handler SIGTERM SIGINT
 
-# Starte Health Check im Hintergrund
-health_check &
-
-# Warte auf Prozesse
-wait $DUMP1090_PID $MLAT_PID
+# Wait for both processes
+wait "$READSB_PID" "$MLAT_PID"
