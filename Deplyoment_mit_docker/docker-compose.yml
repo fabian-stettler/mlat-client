@@ -3,9 +3,11 @@ services:
     build: .
     container_name: adsb-mlat-client
     restart: unless-stopped
-    network_mode: host
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
+    ports:
+      - "8080:80"
+      - "8505:8504"
     environment:
       - MLAT_SERVER=157.180.68.124:40147
       - MLAT_USER=client3-Zuerich
@@ -30,16 +32,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  tar-1090-display:
-    image: ghcr.io/wiedehopf/tar1090:latest
-    container_name: tar1090-web
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-    volumes:
-      - ./adsb-data:/run/readsb/:ro
-      - ./logs:/var/lib/aircraft/json:ro
-      - ./logs:/run/readsb-api:ro
-    depends_on:
-      - adsb-processor

@@ -51,8 +51,26 @@ if [[ -n "$READSB_DEVICE" ]]; then
   READSB_DEVICE_FLAG=(--device="$READSB_DEVICE")
 fi
 
-readsb \
-  --device-type="$READSB_DEVICE_TYPE" \
+#Debug log
+echo "Position: lat=$LATITUDE lon=$LONGITUDE alt=$ALTITUDE"
+
+# Ensure mlatuser can write lighttpd logs
+mkdir -p /var/log/lighttpd
+chown -R mlatuser:mlatuser /var/log/lighttpd
+
+# Ensure mlatuser can write lighttpd logs
+#set user permissions
+chown -R mlatuser:mlatuser /app || true
+
+chown -R mlatuser:dialout /dev/bus/usb || true
+chown -R mlatuser:dialout /dev/rtlsdr || true
+mkdir -p /run/readsb
+
+chown -R mlatuser:mlatuser /run/readsb || true
+chmod -R a+rwX /run/readsb || true
+
+gosu mlatuser readsb \
+  --device-type "$READSB_DEVICE_TYPE" \
   ${READSB_DEVICE_FLAG[@]:-} \
   --net \
   --gain="$READSB_GAIN" \
@@ -61,7 +79,7 @@ readsb \
   --lon="$LONGITUDE" \
   --net-bo-port="$READSB_BO_PORT" \
   --modeac \
-  --write-json=/var/log/adsb \
+  --write-json=/run/readsb \
   --write-json-every=10 \
   --heatmap-dir=/data \
   --heatmap=300 \
@@ -102,15 +120,22 @@ mlat-client \
   "$@" &
 MLAT_PID=$!
 
+#start tar1090
+# Use gosu to run lighttpd as the mlatuser to avoid file permission conflicts.
+gosu mlatuser /usr/sbin/lighttpd -D -f /etc/lighttpd/lighttpd.conf &
+LIGHTTPD_PID=$!
+
 # Graceful shutdown
 term_handler() {
-  echo "Stopping..."
-  kill "$MLAT_PID" 2>/dev/null || true
-  kill "$READSB_PID" 2>/dev/null || true
-  wait "$MLAT_PID" 2>/dev/null || true
-  wait "$READSB_PID" 2>/dev/null || true
+  echo "Stopping..."
+  kill "$LIGHTTPD_PID" 2>/dev/null || true  # Added kill for lighttpd
+  kill "$MLAT_PID" 2>/dev/null || true
+  kill "$READSB_PID" 2>/dev/null || true
+  wait "$LIGHTTPD_PID" 2>/dev/null || true  # Added wait for lighttpd
+  wait "$MLAT_PID" 2>/dev/null || true
+  wait "$READSB_PID" 2>/dev/null || true
 }
 trap term_handler SIGTERM SIGINT
 
-# Wait for both processes
-wait "$READSB_PID" "$MLAT_PID"
+# Wait for all processes
+wait "$READSB_PID" "$MLAT_PID" "$LIGHTTPD_PID"

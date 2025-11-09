@@ -23,9 +23,19 @@ RUN apt-get update && apt-get install -y \
     usbutils \
     rtl-sdr \
     gosu \
+    lighttpd \
+    wget \
+    gzip \
+    cron \
+    net-tools \
+    curl \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Fix lighttpd permissions issue: Use the /app directory for PID file
+RUN sed -i '/server.pid-file/c\server.pid-file = "/app/lighttpd.pid"' /etc/lighttpd/lighttpd.conf
 
 # Klone und baue readsb (moderner dump1090-Ersatz mit besserer SBS-Unterstützung)
 RUN git clone https://github.com/wiedehopf/readsb.git dump1090-src && \
@@ -41,6 +51,16 @@ RUN git clone https://github.com/wiedehopf/mlat-client.git . && \
     pip3 install setuptools pyasyncore && \
     python3 setup.py build && \
     python3 setup.py install
+
+#start tar1090
+RUN git clone https://github.com/wiedehopf/tar1090.git /usr/local/share/tar1090 && \
+    /usr/local/share/tar1090/install.sh readsb
+
+#create symlink from readsb directory to tar1090 html data directory
+RUN ln -s /run/readsb /usr/local/share/tar1090/html/data
+
+#set reading directory of lighttpd to correct dir
+RUN sed -i 's|"/data/" => "readsb/"|"/data/" => "/run/readsb/"|' /etc/lighttpd/conf-available/*port.conf
 
 # Erstelle User mit USB Zugriffsrechten
 RUN useradd -m -r -s /bin/bash -G dialout mlatuser
