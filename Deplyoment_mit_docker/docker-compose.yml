@@ -3,15 +3,17 @@ services:
     build: .
     container_name: adsb-mlat-client
     restart: unless-stopped
-    network_mode: host
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
+    ports:
+      - "8080:80"
+      - "8505:8504"
     environment:
-      - MLAT_SERVER=localhost:40147
-      - MLAT_USER=test-user-Paderborn_:)
-      - LATITUDE=52.5200
-      - LONGITUDE=13.4050
-      - ALTITUDE=35
+      - MLAT_SERVER=157.180.68.124:40147
+      - MLAT_USER=client3-Zuerich
+      - LATITUDE=47.377362
+      - LONGITUDE=8.55292
+      - ALTITUDE=467
       - SIMULATE_DATA=false
       - READSB_DEVICE=0
     volumes:
