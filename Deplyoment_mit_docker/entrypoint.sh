@@ -23,6 +23,7 @@ fi
 READSB_GAIN="${READSB_GAIN:-49.6}"
 READSB_FREQ="${READSB_FREQ:-1090000000}"
 READSB_BO_PORT="${READSB_BO_PORT:-30105}"
+READSB_API_PORT="${READSB_API_PORT:-8080}"
 
 echo "Starting readsb and mlat-client (Option A: readsb inside container)"
 echo "MLAT server: $MLAT_SERVER | User: $MLAT_USER"
@@ -47,19 +48,23 @@ fi
 # Build optional --device flag if provided (supports index or serial)
 READSB_DEVICE_FLAG=()
 if [[ -n "$READSB_DEVICE" ]]; then
-  READSB_DEVICE_FLAG=(--device "$READSB_DEVICE")
+  READSB_DEVICE_FLAG=(--device="$READSB_DEVICE")
 fi
 
 readsb \
-  --device-type "$READSB_DEVICE_TYPE" \
+  --device-type="$READSB_DEVICE_TYPE" \
   ${READSB_DEVICE_FLAG[@]:-} \
   --net \
-  --gain "$READSB_GAIN" \
-  --freq "$READSB_FREQ" \
-  --lat "$LATITUDE" \
-  --lon "$LONGITUDE" \
-  --net-bo-port "$READSB_BO_PORT" \
+  --gain="$READSB_GAIN" \
+  --freq="$READSB_FREQ" \
+  --lat="$LATITUDE" \
+  --lon="$LONGITUDE" \
+  --net-bo-port="$READSB_BO_PORT" \
   --modeac \
+  --write-json=/var/log/adsb \
+  --write-json-every=10 \
+  --heatmap-dir=/data \
+  --heatmap=300 \
   > /tmp/readsb.log 2>&1 &
 READSB_PID=$!
 
