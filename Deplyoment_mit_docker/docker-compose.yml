@@ -32,18 +32,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  tar-1090-display:
-    image: mikenye/tar1090:latest
-    container_name: tar1090-web
-    restart: unless-stopped
-    network_mode: host
-    environment:
-      - BEASTHOST=10.155.119.25:30105
-    volumes:
-      - ./adsb-data:/run/readsb/
-      - ./logs:/var/lib/aircraft/json
-      - ./logs:/run/readsb-api
-      - ./nginx.conf:/etc/nginx/sites-enabled/tar1090
-    depends_on:
-      - adsb-processor

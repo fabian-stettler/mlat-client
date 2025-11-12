@@ -77,8 +77,6 @@ gosu mlatuser readsb \
   --freq "$READSB_FREQ" \
   --lat "$LATITUDE" \
   --lon "$LONGITUDE" \
-  --alt "$ALTITUDE"
-  --uuid $(uuidgen)
   --net-bo-port "$READSB_BO_PORT" \
   --modeac \
   --write-json=/run/readsb \
@@ -118,6 +116,7 @@ mlat-client \
   --lat "$LATITUDE" \
   --lon "$LONGITUDE" \
   --alt "$ALTITUDE" \
+  --uuid "a1b2c3d4-e5f6-7890-1234-567890abcdef" \
   --user "$MLAT_USER" \
   "$@" &
 MLAT_PID=$!
