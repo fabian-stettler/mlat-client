@@ -77,6 +77,8 @@ gosu mlatuser readsb \
   --freq "$READSB_FREQ" \
   --lat "$LATITUDE" \
   --lon "$LONGITUDE" \
+  --alt "$ALTITUDE"
+  --uuid $(uuidgen)
   --net-bo-port "$READSB_BO_PORT" \
   --modeac \
   --write-json=/run/readsb \
