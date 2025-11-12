@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     usbutils \
     rtl-sdr \
     gosu \
+    nginx.core \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -47,6 +49,7 @@ RUN useradd -m -r -s /bin/bash -G dialout mlatuser
 
 # Kopiere EntryPoint und setze Berechtigungen
 COPY entrypoint.sh /entrypoint.sh
+COPY nginx.conf /etc/nginx/sites-enabled/default
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8080 30003 30004 30005

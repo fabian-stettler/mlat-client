@@ -65,6 +65,8 @@ readsb \
   --write-json-every=10 \
   --heatmap-dir=/data \
   --heatmap=300 \
+  --net-http-port="$READSB_API_PORT" \
+  --webdir /usr/local/share/ta
   > /tmp/readsb.log 2>&1 &
 READSB_PID=$!
 

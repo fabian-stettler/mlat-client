@@ -7,11 +7,11 @@ services:
     devices:
       - "/dev/bus/usb:/dev/bus/usb"
     environment:
-      - MLAT_SERVER=localhost:40147
-      - MLAT_USER=test-user-Paderborn_:)
-      - LATITUDE=52.5200
-      - LONGITUDE=13.4050
-      - ALTITUDE=35
+      - MLAT_SERVER=157.180.68.124:40147
+      - MLAT_USER=client1
+      - LATITUDE=47.143657
+      - LONGITUDE=8.432759
+      - ALTITUDE=450
       - SIMULATE_DATA=false
       - READSB_DEVICE=0
     volumes:
@@ -30,3 +30,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  tar-1090-display:
+    image: mikenye/tar1090:latest
+    container_name: tar1090-web
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - BEASTHOST=10.155.119.25:30105
+    volumes:
+      - ./adsb-data:/run/readsb/
+      - ./logs:/var/lib/aircraft/json
+      - ./logs:/run/readsb-api
+      - ./nginx.conf:/etc/nginx/sites-enabled/tar1090
+    depends_on:
+      - adsb-processor
