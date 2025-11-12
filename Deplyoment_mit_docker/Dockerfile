@@ -67,7 +67,6 @@ RUN useradd -m -r -s /bin/bash -G dialout mlatuser
 
 # Kopiere EntryPoint und setze Berechtigungen
 COPY entrypoint.sh /entrypoint.sh
-COPY nginx.conf /etc/nginx/sites-enabled/default
 RUN chmod +x /entrypoint.sh
 
 EXPOSE 8080 30003 30004 30005
